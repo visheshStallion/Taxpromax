@@ -1,5 +1,6 @@
 downloads/
 .browser-profile/
+.browser-profile-tcc/
 __pycache__/
 *.pyc
 .venv/
