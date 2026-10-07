@@ -5,6 +5,8 @@ Semi-automated exporters for your own FIRS records:
 - `download_data.py` -- TaxProMax records filtered by date range.
 - `export_ereceipt.py` -- e-Receipt PDFs (tcc.firs.gov.ng), with their values
   pulled into a single Excel file.
+- `export_tax_credit_admin.py` -- TaxProMax Tax Credit Admin records
+  (taxCreditAdminTp), by ID, into a single Excel file.
 
 **How it works:** each script opens a real, visible browser window and
 pauses. *You* log in by hand -- username, password, and any CAPTCHA
@@ -44,9 +46,17 @@ python export_ereceipt.py --receipt-id 2001110036357
 python export_ereceipt.py --receipt-ids-file receipt_ids.txt
 ```
 
+Tax Credit Admin records, by ID (single, or a text file with one ID per line):
+
+```bash
+python export_tax_credit_admin.py --id 2001110040527
+python export_tax_credit_admin.py --ids-file record_ids.txt
+```
+
 ### Running without a local browser (Browserbase)
 
-`export_ereceipt.py --browserbase` runs the browser on
+`export_ereceipt.py` and `export_tax_credit_admin.py` both take a
+`--browserbase` flag, which runs the browser on
 [Browserbase](https://www.browserbase.com/) instead of your machine -- useful
 if you're running this somewhere with no local Chrome (e.g. a cloud/CI
 session). The manual-login principle is unchanged: it prints a live-view link
@@ -58,6 +68,7 @@ export BROWSERBASE_API_KEY=bb_live_...
 # export BROWSERBASE_PROJECT_ID=...  # only if your account needs one -- the
 #                                     # script will tell you if it does
 python export_ereceipt.py --browserbase --receipt-ids-file receipt_ids.txt
+python export_tax_credit_admin.py --browserbase --ids-file record_ids.txt
 ```
 
 Keep `BROWSERBASE_API_KEY` out of any committed file -- export it as an env
@@ -73,15 +84,16 @@ that folder to force a clean login.
 
 ## Finding the real selectors
 
-Both scripts currently have **placeholder** selectors (search for
+All three scripts currently have **placeholder** selectors (search for
 `TODO(selectors)`), since the authenticated pages haven't been inspected yet:
 
 - `download_data.py`: `RECORDS_URL`, `LOGGED_IN_MARKER_SELECTOR`,
   `START_DATE_INPUT_SELECTOR`, `END_DATE_INPUT_SELECTOR`,
   `APPLY_FILTER_BUTTON_SELECTOR`, `DOWNLOAD_BUTTON_SELECTOR`.
-- `export_ereceipt.py`: `LOGGED_IN_MARKER_SELECTOR`, `VIEW_LINK_SELECTOR`, and
-  the assumption that clicking "View" triggers a file download rather than
-  opening an in-page PDF viewer.
+- `export_ereceipt.py` and `export_tax_credit_admin.py`: `LOGGED_IN_MARKER_SELECTOR`,
+  `VIEW_LINK_SELECTOR`, and the assumption that clicking "View" triggers a
+  file download rather than opening an in-page PDF viewer. (Both scripts
+  share this PDF-fetch logic via `firs_common.py`.)
 
 To fill them in:
 
@@ -97,11 +109,16 @@ payment receipts) with different filter/export UI, you'll likely want one
 URL + selector set per record type -- ask for a variant once you know what's
 there.
 
-`export_ereceipt.py`'s PDF field extraction also assumes each value appears
-as a `Label: Value` line of selectable text (see `FIELD_LINE_PATTERN`). If a
-real receipt PDF uses a different layout (columns, dotted leaders, or is a
-scanned image), that pattern will need adjusting -- share what a receipt
-actually looks like once you can view one.
+The shared PDF field extraction (`firs_common.extract_pdf_fields`) also
+assumes each value appears as a `Label: Value` line of selectable text (see
+`FIELD_LINE_PATTERN`). If a real document uses a different layout (columns,
+dotted leaders, or is a scanned image), that pattern will need adjusting --
+share what a receipt/record actually looks like once you can view one.
+
+**Planned:** a day-based export option (fetch all records for a given day,
+rather than needing IDs up front) -- this needs a records-listing page with
+a date filter, similar to `download_data.py`'s, feeding IDs into these two
+PDF exporters. Blocked on inspecting that listing page's real selectors.
 
 ## Security notes
 
