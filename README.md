@@ -44,6 +44,27 @@ python export_ereceipt.py --receipt-id 2001110036357
 python export_ereceipt.py --receipt-ids-file receipt_ids.txt
 ```
 
+### Running without a local browser (Browserbase)
+
+`export_ereceipt.py --browserbase` runs the browser on
+[Browserbase](https://www.browserbase.com/) instead of your machine -- useful
+if you're running this somewhere with no local Chrome (e.g. a cloud/CI
+session). The manual-login principle is unchanged: it prints a live-view link
+you open to log in and solve any CAPTCHA by hand, then the script takes over
+once you confirm.
+
+```bash
+export BROWSERBASE_API_KEY=bb_live_...
+# export BROWSERBASE_PROJECT_ID=...  # only if your account needs one -- the
+#                                     # script will tell you if it does
+python export_ereceipt.py --browserbase --receipt-ids-file receipt_ids.txt
+```
+
+Keep `BROWSERBASE_API_KEY` out of any committed file -- export it as an env
+var, or put it in a local, gitignored `.env`. Rotate it in the Browserbase
+dashboard if it's ever been pasted somewhere it shouldn't (chat, a log, a
+committed file).
+
 Downloaded files (and, for e-receipts, the resulting `ereceipts.xlsx`) land in
 `./downloads` by default (`--output-dir` to change it). Each script caches its
 own browser session in a separate `.browser-profile*` folder (see

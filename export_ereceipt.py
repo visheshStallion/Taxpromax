@@ -48,7 +48,16 @@ def parse_args():
     parser.add_argument(
         "--user-data-dir",
         default=".browser-profile-tcc",
-        help="Persistent browser profile folder, so your session can survive between runs",
+        help="Persistent browser profile folder, so your session can survive between runs (ignored with --browserbase)",
+    )
+    parser.add_argument(
+        "--browserbase",
+        action="store_true",
+        help=(
+            "Run the browser on Browserbase instead of locally (needs BROWSERBASE_API_KEY, and "
+            "BROWSERBASE_PROJECT_ID if your account requires one). A live-view link is printed for "
+            "you to log in and solve any CAPTCHA by hand -- same manual-login step, just remote."
+        ),
     )
     return parser.parse_args()
 
@@ -96,17 +105,28 @@ def main():
     rows = []  # each row: dict of {label: value}, plus receipt_id and raw_text
     all_labels = []  # preserves first-seen order across receipts
 
+    session_id = None
     with sync_playwright() as p:
-        context = p.chromium.launch_persistent_context(
-            args.user_data_dir,
-            headless=False,
-            accept_downloads=True,
-        )
+        if args.browserbase:
+            from browserbase_session import create_session, end_session
+
+            session_id, connect_url, live_view_url = create_session()
+            print(f"\nBrowserbase session created ({session_id}).")
+            print(f"Open this link to log in yourself (username, password, and CAPTCHA if shown):\n  {live_view_url}\n")
+            browser = p.chromium.connect_over_cdp(connect_url)
+            context = browser.contexts[0] if browser.contexts else browser.new_context(accept_downloads=True)
+        else:
+            context = p.chromium.launch_persistent_context(
+                args.user_data_dir,
+                headless=False,
+                accept_downloads=True,
+            )
         page = context.pages[0] if context.pages else context.new_page()
 
         page.goto(LOGIN_URL)
-        print("\nA browser window has opened.")
-        print("Log in yourself (username, password, and CAPTCHA if shown).")
+        if not args.browserbase:
+            print("\nA browser window has opened.")
+            print("Log in yourself (username, password, and CAPTCHA if shown).")
         input("Once you're logged in, come back here and press Enter to continue...")
 
         try:
@@ -157,6 +177,8 @@ def main():
                     all_labels.append(label)
 
         context.close()
+        if session_id:
+            end_session(session_id)
 
     wb = Workbook()
     ws = wb.active
